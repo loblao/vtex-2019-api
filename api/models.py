@@ -7,6 +7,12 @@ from django.contrib.auth.models import BaseUserManager
 from django.db import models
 
 
+class Store(models.Model):
+    name = models.CharField(max_length=100)
+    addr = models.CharField(max_length=250)
+    api_token = models.CharField(max_length=64)
+
+
 class AuthUserManager(BaseUserManager):
     def create_user(self, username, email, password=None):
         if not email:
@@ -30,6 +36,7 @@ class APIUser(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(unique=True, max_length=100)
     email = models.EmailField(unique=True, max_length=255)
     is_staff = models.BooleanField(default=False)
+    store = models.ForeignKey(Store, null=True, related_name='user_store')
 
     objects = AuthUserManager()
     USERNAME_FIELD = 'username'
@@ -48,9 +55,9 @@ STATUS_PICKED_UP = 2
 
 class OrderInfo(models.Model):
     user = models.ForeignKey(APIUser, related_name='order_user')
+    name = models.CharField(max_length=100)
     code = models.CharField(max_length=32)
-    store = models.CharField(max_length=100)
-    store_addr = models.CharField(max_length=250)
+    store = models.ForeignKey(Store, related_name='order_store')
     price = models.FloatField()
     status = models.IntegerField(default=STATUS_PEN)
     expected_date = models.DateTimeField(null=True)
