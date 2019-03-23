@@ -39,4 +39,22 @@ class APIUser(AbstractBaseUser, PermissionsMixin):
 class SessionToken(models.Model):
     value = models.CharField(unique=True, max_length=32)
     expiration = models.DateTimeField()
-    user = models.ForeignKey(APIUser, related_name='user')
+    user = models.ForeignKey(APIUser, related_name='token_user')
+
+
+STATUS_PEN = 0
+STATUS_READY = 1
+STATUS_PICKED_UP = 2
+
+class OrderInfo(models.Model):
+    user = models.ForeignKey(APIUser, related_name='order_user')
+    code = models.CharField(max_length=32)
+    store = models.CharField(max_length=100)
+    store_addr = models.CharField(max_length=250)
+    price = models.FloatField()
+    status = models.IntegerField(default=STATUS_PEN)
+    expected_date = models.DateTimeField(null=True)
+    payment_info = models.CharField(max_length=100)
+    seller = models.CharField(max_length=100)
+    link = models.CharField(max_length=1000)
+    desc = models.CharField(max_length=70)
