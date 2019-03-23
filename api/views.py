@@ -28,7 +28,7 @@ def requires_session_token(f):
             request.user = token.user
 
         except:
-            return JsonResponse({'success': False, 'auth': True})
+            return JsonResponse({'success': False, 'reason': 'auth'})
 
         return f(self, request, *args, **kwargs)
 
@@ -56,6 +56,8 @@ class AuthenticationView(View):
 
                 response = {'success': True, 'is_staff': u.is_staff,
                             'token': t.value}
+                if u.is_staff:
+                    response['store_name'] = u.store.name
 
         except APIUser.DoesNotExist:
             pass
@@ -171,7 +173,7 @@ class MyOrdersView(View):
                 },
                 'price': order.price,
                 'status': order.status,
-                'expected_date': order.expected_date,
+                'expected_date': order.expected_date.strftime('%d/%b/%Y %H:%M:%S'),
                 'payment_info': order.payment_info,
                 'link': order.link,
                 'desc': order.desc
@@ -188,7 +190,7 @@ class StoreOrdersView(View):
     def post(self, request, *args, **kwargs):
         store = request.user.store
         if not store:
-            response = {'success': False, 'permission': True}
+            response = {'success': False, 'reason': 'permission'}
             return JsonResponse(response)
 
         data = []
@@ -199,10 +201,41 @@ class StoreOrdersView(View):
                 'seller': order.seller,
                 'price': order.price,
                 'status': order.status,
-                'expected_date': order.expected_date,
+                'expected_date': order.expected_date.strftime('%d/%b/%Y %H:%M:%S'),
                 'payment_info': order.payment_info,
                 'desc': order.desc
             })
 
         response = {'success': True, 'data': data}
+        return JsonResponse(response)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CodeInfoView(View):
+    @requires_session_token
+    def post(self, request, *args, **kwargs):
+        store = request.user.store
+        if not store:
+            response = {'success': False, 'permission': True}
+            return JsonResponse(response)
+
+        code = request.POST['code']
+        try:
+            order = OrderInfo.objects.get(code=code, store=store)
+            data = {
+                'code': order.code,
+                'name': order.name,
+                'seller': order.seller,
+                'price': order.price,
+                'status': order.status,
+                'expected_date': order.expected_date.strftime('%d/%b/%Y %H:%M:%S'),
+                'payment_info': order.payment_info,
+                'desc': order.desc
+            }
+
+            response = {'success': True, 'data': data}
+
+        except OrderInfo.DoesNotExist:
+            response = {'success': False, 'reason': 'unknown order'}
+
         return JsonResponse(response)
