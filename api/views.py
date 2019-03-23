@@ -19,6 +19,21 @@ import datetime
 import os
 
 
+def requires_session_token(f):
+    def wrap(self, request, *args, **kwargs):
+        try:
+            token = request.POST['session']
+            token = SessionToken.objects.get(value=token, expiration__gt=timezone.now())
+            request.user = token.user
+
+        except:
+            return JsonResponse({'success': False, 'auth': True})
+
+        return f(self, request, *args, **kwargs)
+
+    return wrap
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class AuthenticationView(View):
     def post(self, request, *args, **kwargs):
@@ -114,6 +129,9 @@ class UpdateOrderView(View):
             if 'link' in request.POST:
                 order.link = request.POST['link']
 
+            if 'desc' in request.POST:
+                order.desc = request.POST['desc']
+
             if 'status' in request.POST:
                 order.status = request.POST['status']
 
@@ -133,4 +151,30 @@ class UpdateOrderView(View):
         except OrderInfo.DoesNotExist:
             response = {'success': False, 'reason': 'unknown order'}
 
+        return JsonResponse(response)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class MyOrdersView(View):
+    @requires_session_token
+    def post(self, request, *args, **kwargs):
+        data = []
+        for order in OrderInfo.objects.filter(user=request.user):
+            data.append({
+                'code': order.code,
+                'name': order.name,
+                'store': {
+                    'name': order.store.name,
+                    'addr': order.store.addr,
+                    'seller': order.seller
+                },
+                'price': order.price,
+                'status': order.status,
+                'expected_date': order.expected_date,
+                'payment_info': order.payment_info,
+                'link': order.link,
+                'desc': order.desc
+            })
+
+        response = {'success': True, 'data': data}
         return JsonResponse(response)
