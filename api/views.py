@@ -14,6 +14,7 @@ from api.models import APIUser
 from api.models import SessionToken
 from api.models import OrderInfo
 from api.models import STATUS_PEN
+from api.models import STATUS_PICKED_UP
 
 import datetime
 import os
@@ -173,6 +174,33 @@ class MyOrdersView(View):
                 'expected_date': order.expected_date,
                 'payment_info': order.payment_info,
                 'link': order.link,
+                'desc': order.desc
+            })
+
+        response = {'success': True, 'data': data}
+        return JsonResponse(response)
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StoreOrdersView(View):
+    @requires_session_token
+    def post(self, request, *args, **kwargs):
+        store = request.user.store
+        if not store:
+            response = {'success': False, 'permission': True}
+            return JsonResponse(response)
+
+        data = []
+        for order in OrderInfo.objects.filter(store=store).exclude(status=STATUS_PICKED_UP):
+            data.append({
+                'code': order.code,
+                'name': order.name,
+                'seller': order.seller,
+                'price': order.price,
+                'status': order.status,
+                'expected_date': order.expected_date,
+                'payment_info': order.payment_info,
                 'desc': order.desc
             })
 
